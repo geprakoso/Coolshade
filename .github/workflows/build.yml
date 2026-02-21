@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -54,8 +57,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: tauri
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Coolshade ${{ github.ref_name }}'
+          tagName: v${{ github.ref_name == 'main' && '0.1.0' || github.ref_name }}
+          releaseName: 'Coolshade v0.1.0'
           releaseBody: 'Download the installer for your platform below.'
           releaseDraft: true
           prerelease: false
