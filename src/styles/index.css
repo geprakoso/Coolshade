@@ -12,19 +12,26 @@
             radial-gradient(at 0% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
         background-color: #fafafa;
     }
+
+    /* Force GPU compositing for smoother animations on WebKitGTK (Tauri/Linux) */
+    *,
+    *::before,
+    *::after {
+        -webkit-transform: translateZ(0);
+    }
 }
 
 @layer utilities {
     .glass {
-        @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+        @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
     }
 
     .glass-card {
-        @apply bg-white/60 backdrop-blur-lg border border-white/40 shadow-sm transition-all duration-300;
+        @apply bg-white/60 backdrop-blur-sm border border-white/40 shadow-sm transition-all duration-300;
     }
 
     .glass-input {
-        @apply bg-white/50 backdrop-blur-sm border-gray-200/50 focus:bg-white/80 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none;
+        @apply bg-white/50 border-gray-200/50 focus:bg-white/80 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none;
     }
 
     .text-glow {
