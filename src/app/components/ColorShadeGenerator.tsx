@@ -1,19 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Button } from './ui/button';
-import { Palette, Copy, Check } from 'lucide-react';
+import { Palette, Copy, Check, History, Trash2, Pipette } from 'lucide-react';
 
 export function ColorShadeGenerator() {
   const [baseColor, setBaseColor] = useState('#3b82f6');
+  const [recentColors, setRecentColors] = useState<string[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Load recent colors from local storage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('coolshade-recent-colors');
+    if (saved) {
+      try {
+        setRecentColors(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse recent colors', e);
+      }
+    }
+  }, []);
+
+  // Save color to recent list
+  const addToRecent = (color: string) => {
+    // Normalize
+    const normalized = color.toLowerCase();
+
+    setRecentColors(prev => {
+      // Remove if exists
+      const filtered = prev.filter(c => c.toLowerCase() !== normalized);
+      // Add to front
+      const newColors = [normalized, ...filtered].slice(0, 10); // Keep max 10
+      localStorage.setItem('coolshade-recent-colors', JSON.stringify(newColors));
+      return newColors;
+    });
+  };
+
+  // Debouce adding to recent colors
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (/^#[0-9a-f]{6}$/i.test(baseColor)) {
+        addToRecent(baseColor);
+      }
+    }, 1500); // Wait 1.5s after user stops typing/dragging
+
+    return () => clearTimeout(timer);
+  }, [baseColor]);
 
   // Generate shades from a base color
   const generateShades = (color: string) => {
     const shades = [];
     const percentages = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-    
+
     // Convert hex to RGB
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -33,10 +70,10 @@ export function ColorShadeGenerator() {
     };
 
     const rgb = hexToRgb(color);
-    
+
     percentages.forEach((percentage, index) => {
       let r, g, b;
-      
+
       if (percentage <= 500) {
         // Lighten the color
         const factor = (500 - percentage) / 500;
@@ -50,14 +87,14 @@ export function ColorShadeGenerator() {
         g = rgb.g * (1 - factor * 0.7);
         b = rgb.b * (1 - factor * 0.7);
       }
-      
+
       shades.push({
         name: percentage,
         hex: rgbToHex(r, g, b),
         rgb: `${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}`
       });
     });
-    
+
     return shades;
   };
 
@@ -71,155 +108,166 @@ export function ColorShadeGenerator() {
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    if (/^#[0-9A-F]{6}$/i.test(value) || value.length <= 7) {
+    setBaseColor(value);
+  };
+
+  const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value.startsWith('#')) {
       setBaseColor(value);
+    } else {
+      setBaseColor(`#${value}`);
     }
   };
 
-  return (
-    <div className="w-full max-w-7xl mx-auto space-y-4 md:space-y-8">
-      {/* Input Form Section */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
-        <div className="flex items-center gap-3 mb-4 md:mb-6">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <Palette className="size-5 md:size-6 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-base md:text-lg">Color Input</h2>
-            <p className="text-xs md:text-sm text-gray-500">Enter your base color in HEX format</p>
-          </div>
-        </div>
+  const clearHistory = () => {
+    setRecentColors([]);
+    localStorage.removeItem('coolshade-recent-colors');
+  };
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="hex-input">HEX Color Code</Label>
-              <Input
-                id="hex-input"
-                type="text"
-                placeholder="#3b82f6"
-                value={baseColor}
-                onChange={handleColorChange}
-                className="font-mono"
-                maxLength={7}
-              />
+  const handleEyeDropper = async () => {
+    // @ts-ignore - Check if running inside Tauri
+    if (window.__TAURI_INTERNALS__) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const color = await invoke<string>('pick_color');
+        if (color) {
+          setBaseColor(color);
+        }
+      } catch (e) {
+        console.error('Tauri color picker failed:', e);
+        // Fallback: open the native HTML color input
+        const colorInput = document.getElementById('base-color-picker');
+        if (colorInput) colorInput.click();
+      }
+      return;
+    }
+
+    // Fallback for regular browser: use HTML color input
+    const colorInput = document.getElementById('base-color-picker');
+    if (colorInput) colorInput.click();
+  };
+
+  return (
+    <div className="w-full space-y-8">
+      {/* Input Form Section */}
+      <div className="glass-card rounded-3xl p-6 md:p-8 max-w-2xl mx-auto">
+        <div className="flex flex-col md:flex-row items-center gap-6">
+
+          {/* Color Preview/Picker Circle */}
+          <div className="relative group shrink-0">
+            <div
+              className="size-20 md:size-24 rounded-full shadow-inner border-4 border-white/50 transition-transform duration-300 group-hover:scale-105"
+              style={{ backgroundColor: baseColor }}
+            ></div>
+            <Input
+              id="base-color-picker"
+              type="color"
+              value={baseColor}
+              onChange={handleColorChange}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full rounded-full"
+            />
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Palette className="text-white/80 drop-shadow-md size-8" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="color-picker">Color Picker</Label>
-              <div className="relative">
+          </div>
+
+          <div className="flex-grow space-y-4 w-full text-center md:text-left">
+            <div>
+              <Label htmlFor="hex-input" className="text-gray-500 font-medium mb-1.5 block">Base Color</Label>
+              <div className="relative max-w-xs mx-auto md:mx-0 flex gap-2">
                 <Input
-                  id="color-picker"
-                  type="color"
-                  value={baseColor}
-                  onChange={(e) => setBaseColor(e.target.value)}
-                  className="h-10 cursor-pointer"
+                  id="hex-input"
+                  type="text"
+                  value={baseColor.toUpperCase()}
+                  onChange={handleHexInputChange}
+                  className="glass-input h-12 text-lg font-mono text-center md:text-left pl-4 tracking-wider flex-grow"
+                  maxLength={7}
                 />
+
+                <button
+                  onClick={handleEyeDropper}
+                  className="h-12 w-12 shrink-0 flex items-center justify-center rounded-xl border border-gray-200 bg-white/50 hover:bg-white hover:border-blue-400 text-gray-600 hover:text-blue-500 transition-all shadow-sm"
+                  title="Pick color from screen"
+                >
+                  <Pipette className="size-5" />
+                </button>
               </div>
             </div>
+
+            {/* Recent Colors list */}
+            {recentColors.length > 0 && (
+              <div className="animate-fade-in-up">
+                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                    <History className="size-3" /> Recent
+                  </span>
+                  <button
+                    onClick={clearHistory}
+                    className="text-gray-300 hover:text-red-400 transition-colors p-1"
+                    title="Clear History"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                  {recentColors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setBaseColor(color)}
+                      className="group relative size-8 rounded-full shadow-sm ring-1 ring-black/5 hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    >
+                      {baseColor.toLowerCase() === color.toLowerCase() && (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <Check className={`size-4 drop-shadow-md ${['#ffffff', '#fff'].includes(color) ? 'text-black' : 'text-white'}`} />
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Shades Display Section - Horizontal Stacked */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="flex flex-col md:flex-row h-screen md:h-96">
-          {shades.map((shade, index) => {
-            const isHovered = hoveredIndex === index;
-            const isDark = parseInt(shade.name.toString()) >= 500;
-            
-            return (
+      {/* Shades Display Section */}
+      <div className="grid grid-cols-2 md:grid-cols-11 gap-4 px-2">
+        {shades.map((shade, index) => {
+          const isDark = parseInt(shade.name.toString()) >= 500;
+
+          return (
+            <div
+              key={shade.name}
+              className="group relative flex flex-col aspect-[2/3] md:aspect-[1/4] rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-black/5 ring-1 ring-black/5"
+            >
+              {/* Color Block */}
               <div
-                key={shade.name}
-                className="relative flex-1 transition-all duration-300 ease-out cursor-pointer group"
-                style={{ 
-                  backgroundColor: shade.hex,
-                  flex: isHovered ? '2' : '1'
-                }}
-                onMouseEnter={() => setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
+                className="flex-grow w-full relative"
+                style={{ backgroundColor: shade.hex }}
               >
-                {/* Hover Information Panel */}
-                <div 
-                  className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${
-                    isHovered ? 'opacity-100' : 'opacity-0'
-                  }`}
-                >
-                  <div className={`text-center space-y-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {/* Weight */}
-                    <div className="text-3xl md:text-5xl font-bold tracking-tight">
-                      {shade.name}
-                    </div>
-                    
-                    {/* HEX Code */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-center gap-2 group/hex">
-                        <span className="font-mono text-xs md:text-sm uppercase tracking-wide">
-                          {shade.hex}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyToClipboard(shade.hex);
-                          }}
-                          className={`p-1.5 rounded-md transition-colors ${
-                            isDark 
-                              ? 'hover:bg-white/20' 
-                              : 'hover:bg-black/10'
-                          }`}
-                          title="Copy HEX"
-                        >
-                          {copiedCode === shade.hex ? (
-                            <Check className="size-3.5 md:size-4" />
-                          ) : (
-                            <Copy className="size-3.5 md:size-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* RGB Code */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-center gap-2 group/rgb">
-                        <span className="font-mono text-[10px] md:text-xs opacity-80">
-                          RGB {shade.rgb}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyToClipboard(`rgb(${shade.rgb})`);
-                          }}
-                          className={`p-1.5 rounded-md transition-colors ${
-                            isDark 
-                              ? 'hover:bg-white/20' 
-                              : 'hover:bg-black/10'
-                          }`}
-                          title="Copy RGB"
-                        >
-                          {copiedCode === `rgb(${shade.rgb})` ? (
-                            <Check className="size-3 md:size-3.5" />
-                          ) : (
-                            <Copy className="size-3 md:size-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Weight indicator on bottom (always visible but subtle) */}
-                <div 
-                  className={`absolute bottom-4 md:bottom-4 left-1/2 md:left-1/2 md:-translate-x-1/2 -translate-x-1/2 transition-opacity duration-300 ${
-                    isHovered ? 'opacity-0' : 'opacity-40 group-hover:opacity-60'
-                  }`}
-                >
-                  <span className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {shade.name}
-                  </span>
+                {/* Overlay Interaction */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/10 backdrop-blur-[1px]">
+                  <button
+                    onClick={() => copyToClipboard(shade.hex)}
+                    className="bg-white/90 text-gray-800 p-2 rounded-full shadow-lg hover:bg-white hover:scale-110 transition-all mb-2"
+                    title="Copy HEX"
+                  >
+                    {copiedCode === shade.hex ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Info Block */}
+              <div className="glass-card p-3 flex flex-col items-center justify-center gap-1 bg-white/80">
+                <span className="text-xs font-bold text-gray-400">{shade.name}</span>
+                <span className="text-xs font-mono text-gray-600 uppercase">{shade.hex}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,46 +1,54 @@
 import { ColorShadeGenerator } from './components/ColorShadeGenerator';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Github } from 'lucide-react';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header */}
-      <header className="border-b border-white/50 bg-white/40 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 md:py-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg">
-              <Sparkles className="size-5 md:size-6 text-white" />
+    <div className="min-h-screen relative flex flex-col font-sans text-gray-800">
+
+      {/* Navbar - Floating Glass */}
+      {/* <nav className="fixed top-4 left-0 right-0 z-50 px-4 md:px-0">
+        <div className="max-w-3xl mx-auto glass rounded-full px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-gradient-to-br from-blue-500 to-violet-600 p-1.5 rounded-lg">
+              <Sparkles className="size-4 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                CoolShades
-              </h1>
-              <p className="text-xs md:text-sm text-gray-600">
-                Generate beautiful color shades
-              </p>
-            </div>
+            <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-violet-600">
+              CoolShades
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-sm font-medium text-gray-600">
+            <a href="#" className="hover:text-gray-900 transition-colors">About</a>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 transition-colors">
+              <Github className="size-5" />
+            </a>
           </div>
         </div>
-      </header>
+      </nav> */}
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-12">
-        <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
-            Create Perfect Color Shades
-          </h2>
-          <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
-            Enter any color and generate a complete shade palette from light to dark.
+      <main className="flex-grow flex flex-col items-center justify-center px-4 pt-8 pb-16">
+
+        {/* Hero Section */}
+        {/* <div className="text-center mb-12 animate-fade-in-up">
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 text-gray-900 drop-shadow-sm">
+            Perfect Color <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600">Palettes</span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto glass-card px-6 py-3 rounded-2xl inline-block">
+            Generate beautiful, consistent color shades for your next project in seconds.
           </p>
+        </div> */}
+
+        {/* Generator Component */}
+        <div className="w-full max-w-5xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <ColorShadeGenerator />
         </div>
 
-        <ColorShadeGenerator />
       </main>
 
       {/* Footer */}
-      <footer className="mt-12 md:mt-20 pb-6 md:pb-8 text-center text-xs md:text-sm text-gray-500">
-        <p>Made with ❤️ by Dan</p>
-      </footer>
+      {/* <footer className="py-8 text-center text-sm text-gray-500/80">
+        <p>© {new Date().getFullYear()} CoolShades. Crafted with translucency.</p>
+      </footer> */}
     </div>
   );
 }
